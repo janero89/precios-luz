@@ -193,21 +193,37 @@
     text-transform:uppercase;
     letter-spacing:.08em;
   }
+  .chart-readout{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    color:var(--text-muted);
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:9px 12px;
+    margin-bottom:14px;
+    transition:color .15s;
+  }
+  .chart-readout.active{color:var(--text);}
   .chart{
     display:flex;
     align-items:flex-end;
     gap:3px;
     height:150px;
     position:relative;
+    width:100%;
+    box-sizing:border-box;
   }
   .bar-col{
-    flex:1;
+    flex:1 1 0;
+    min-width:0;
     height:100%;
     display:flex;
     flex-direction:column;
     justify-content:flex-end;
     align-items:center;
     position:relative;
+    cursor:pointer;
   }
   .bar{
     width:100%;
@@ -228,13 +244,17 @@
     display:flex;
     gap:3px;
     margin-top:8px;
+    width:100%;
+    box-sizing:border-box;
   }
   .axis-label{
-    flex:1;
+    flex:1 1 0;
+    min-width:0;
     text-align:center;
     font-family:'IBM Plex Mono',monospace;
     font-size:10px;
     color:var(--text-muted);
+    overflow:hidden;
   }
   .legend{
     display:flex;
@@ -378,6 +398,9 @@
     .meter-right{text-align:left;}
     .axis-label:nth-child(odd){visibility:hidden;}
     .insight-row{grid-template-columns:1fr;}
+    .chart{gap:1.5px;}
+    .chart-axis{gap:1.5px;}
+    .axis-label{font-size:9px;}
   }
 </style>
 </head>
@@ -418,6 +441,7 @@
 
   <div class="chart-card">
     <div class="chart-title" id="chartTitle">Precio por hora</div>
+    <div class="chart-readout" id="chartReadout">Toca o pasa el cursor por una barra para ver el precio exacto</div>
     <div id="chartArea">
       <div class="msg">Cargando datos…</div>
     </div>
@@ -612,6 +636,13 @@ function renderDay(dateStr, values){
     bar.style.height = Math.max(4, t*100) + '%';
     bar.style.background = priceColor(t);
     bar.title = `${String(v.hour).padStart(2,'0')}:00 — ${formatEs(v.price)} €/kWh`;
+    const showReadout = () => {
+      const readout = $('chartReadout');
+      readout.textContent = `${String(v.hour).padStart(2,'0')}:00–${String((v.hour+1)%24).padStart(2,'0')}:00 → ${formatEs(v.price)} €/kWh`;
+      readout.classList.add('active');
+    };
+    col.addEventListener('mouseenter', showReadout);
+    col.addEventListener('click', showReadout);
     if(v.hour === currentHour){
       const flag = document.createElement('div');
       flag.className = 'now-flag';
