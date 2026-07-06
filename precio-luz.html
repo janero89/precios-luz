@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Precio de la luz · PVPC hora a hora</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0c1a1c;
+    --surface: #12262a;
+    --surface-2: #193238;
+    --line: #234247;
+    --text: #eaf3f1;
+    --text-muted: #86a3a3;
+    --cheap: #3fe6b0;
+    --mid: #f2c94c;
+    --expensive: #ff6452;
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(63,230,176,0.08), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, rgba(255,100,82,0.06), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    padding:32px 18px 60px;
+  }
+  .wrap{max-width:840px;margin:0 auto;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--cheap);
+    display:flex;align-items:center;gap:8px;
+    margin-bottom:6px;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--cheap);box-shadow:0 0 8px var(--cheap);}
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:clamp(24px,4vw,32px);
+    margin:0 0 24px;
+    letter-spacing:-0.01em;
+  }
+
+  /* ---- Meter panel ---- */
+  .meter{
+    background:linear-gradient(180deg,var(--surface),var(--surface-2));
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:26px 26px 22px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:16px;
+    flex-wrap:wrap;
+    position:relative;
+    overflow:hidden;
+  }
+  .meter::before{
+    content:'';
+    position:absolute;inset:0;
+    background:repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 34px);
+    pointer-events:none;
+  }
+  .meter-left{position:relative;z-index:1;}
+  .meter-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--text-muted);
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  .meter-price{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:600;
+    font-size:clamp(40px,9vw,58px);
+    line-height:1;
+    letter-spacing:-0.02em;
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+  }
+  .meter-price .unit{font-size:16px;color:var(--text-muted);font-weight:400;}
+  .status-pill{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    padding:6px 12px;
+    border-radius:999px;
+    margin-top:12px;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    border:1px solid var(--line);
+  }
+  .meter-right{
+    text-align:right;
+    position:relative;z-index:1;
+    font-family:'IBM Plex Mono',monospace;
+    color:var(--text-muted);
+    font-size:13px;
+  }
+  .meter-right .clock{font-size:22px;color:var(--text);font-weight:500;}
+
+  /* ---- Nav ---- */
+  .nav{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin:22px 0 18px;
+    flex-wrap:wrap;
+  }
+  .nav button, .nav .quick{
+    font-family:'Inter',sans-serif;
+    background:var(--surface);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:9px 14px;
+    border-radius:10px;
+    font-size:14px;
+    cursor:pointer;
+    transition:border-color .15s, background .15s;
+  }
+  .nav button:hover, .nav .quick:hover{border-color:var(--cheap);}
+  .nav .arrow{padding:9px 12px;font-weight:600;}
+  .nav input[type=date]{
+    font-family:'IBM Plex Mono',monospace;
+    background:var(--surface);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:9px 12px;
+    border-radius:10px;
+    font-size:14px;
+    accent-color:var(--cheap);
+  }
+  .nav .spacer{flex:1;}
+  .nav .quick.active{border-color:var(--cheap);color:var(--cheap);}
+  .nav .quick:disabled, .nav button:disabled{
+    opacity:.4;
+    cursor:not-allowed;
+    border-color:var(--line) !important;
+    color:var(--text-muted) !important;
+  }
+  .nav .quick:disabled:hover, .nav button:disabled:hover{border-color:var(--line);}
+  .tomorrow-note{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--text-muted);
+    margin:-10px 0 18px;
+  }
+
+  /* ---- Stats ---- */
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+    margin-bottom:18px;
+  }
+  .stat{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px 16px;
+  }
+  .stat .k{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;}
+  .stat .v{font-family:'IBM Plex Mono',monospace;font-size:20px;margin-top:4px;}
+  .stat.cheap .v{color:var(--cheap);}
+  .stat.expensive .v{color:var(--expensive);}
+
+  /* ---- Chart ---- */
+  .chart-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:20px 18px 14px;
+    margin-bottom:18px;
+  }
+  .chart-title{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--text-muted);
+    margin-bottom:14px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+  .chart{
+    display:flex;
+    align-items:flex-end;
+    gap:3px;
+    height:150px;
+    position:relative;
+  }
+  .bar-col{
+    flex:1;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-end;
+    align-items:center;
+    position:relative;
+  }
+  .bar{
+    width:100%;
+    border-radius:4px 4px 2px 2px;
+    min-height:3px;
+    transition:filter .15s;
+  }
+  .bar-col:hover .bar{filter:brightness(1.25);}
+  .now-flag{
+    position:absolute;
+    top:-16px;
+    font-size:13px;
+    animation:pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1;transform:translateY(0);}50%{opacity:.5;transform:translateY(-2px);}}
+  .bar-col.is-now .bar{outline:2px solid var(--text);outline-offset:1px;}
+  .chart-axis{
+    display:flex;
+    gap:3px;
+    margin-top:8px;
+  }
+  .axis-label{
+    flex:1;
+    text-align:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    color:var(--text-muted);
+  }
+
+  /* ---- Table ---- */
+  .table-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:16px;
+    overflow:hidden;
+  }
+  table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:13px;}
+  thead th{
+    text-align:left;
+    padding:12px 16px;
+    color:var(--text-muted);
+    font-weight:500;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    border-bottom:1px solid var(--line);
+  }
+  tbody td{padding:9px 16px;border-bottom:1px solid rgba(255,255,255,0.03);}
+  tbody tr.is-now{background:rgba(63,230,176,0.08);}
+  tbody tr.is-now td:first-child{color:var(--cheap);font-weight:600;}
+  .mini-bar-cell{width:40%;}
+  .mini-bar-track{background:rgba(255,255,255,0.05);height:8px;border-radius:4px;overflow:hidden;}
+  .mini-bar-fill{height:100%;border-radius:4px;}
+
+  .msg{
+    padding:40px 20px;
+    text-align:center;
+    color:var(--text-muted);
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+  }
+  .footnote{
+    margin-top:22px;
+    font-size:12px;
+    color:var(--text-muted);
+    line-height:1.6;
+    font-family:'Inter',sans-serif;
+  }
+  .footnote a{color:var(--cheap);}
+  @media (max-width:520px){
+    .stats{grid-template-columns:1fr 1fr;}
+    .stat:last-child{grid-column:1 / -1;}
+    .meter{flex-direction:column;align-items:flex-start;}
+    .meter-right{text-align:left;}
+    .axis-label:nth-child(odd){visibility:hidden;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow"><span class="dot"></span>PVPC · Mercado peninsular</div>
+  <h1>Precio de la luz, hora a hora</h1>
+
+  <div class="meter">
+    <div class="meter-left">
+      <div class="meter-label" id="meterLabel">Precio ahora</div>
+      <div class="meter-price"><span id="meterPrice">--,---</span><span class="unit">€/kWh</span></div>
+      <div class="status-pill" id="statusPill">cargando…</div>
+    </div>
+    <div class="meter-right">
+      <div id="clockDate">—</div>
+      <div class="clock" id="clockTime">--:--</div>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button class="arrow" id="prevDay" title="Día anterior">←</button>
+    <input type="date" id="datePicker">
+    <button class="arrow" id="nextDay" title="Día siguiente">→</button>
+    <div class="spacer"></div>
+    <button class="quick" id="btnYesterday">Ayer</button>
+    <button class="quick" id="btnToday">Hoy</button>
+    <button class="quick" id="btnTomorrow">Mañana</button>
+  </div>
+  <div class="tomorrow-note" id="tomorrowNote" style="display:none;"></div>
+
+  <div class="stats">
+    <div class="stat cheap"><div class="k">Mínimo</div><div class="v" id="statMin">—</div></div>
+    <div class="stat"><div class="k">Media</div><div class="v" id="statAvg">—</div></div>
+    <div class="stat expensive"><div class="k">Máximo</div><div class="v" id="statMax">—</div></div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title" id="chartTitle">Precio por hora</div>
+    <div id="chartArea">
+      <div class="msg">Cargando datos…</div>
+    </div>
+  </div>
+
+  <div class="table-card" id="tableCard" style="margin-top:18px;"></div>
+
+  <div class="footnote">
+    Datos del precio horario del mercado eléctrico (base del PVPC), publicados por Red Eléctrica de España a través de su API pública (<a href="https://www.ree.es/es/datos/apidatos" target="_blank" rel="noopener">REData</a>). Se muestran en €/kWh, hora de referencia Península. El precio final de la factura PVPC añade peajes e impuestos, por lo que puede diferir ligeramente. Los precios de mañana suelen publicarse a partir de las 20:15h.
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const MADRID_TZ = 'Europe/Madrid';
+
+function madridNowParts(){
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: MADRID_TZ, year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit', hour12:false
+  });
+  const parts = Object.fromEntries(fmt.formatToParts(new Date()).map(p=>[p.type,p.value]));
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, hour: parseInt(parts.hour,10), minute: parts.minute };
+}
+
+const PUBLISH_HOUR = 20;
+const PUBLISH_MINUTE = 30;
+
+function tomorrowIsPublished(nowParts){
+  return nowParts.hour > PUBLISH_HOUR ||
+    (nowParts.hour === PUBLISH_HOUR && parseInt(nowParts.minute,10) >= PUBLISH_MINUTE);
+}
+
+function getMaxSelectableDate(nowParts){
+  return tomorrowIsPublished(nowParts) ? addDays(nowParts.date, 1) : nowParts.date;
+}
+
+function addDays(dateStr, delta){
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m-1, d));
+  dt.setUTCDate(dt.getUTCDate()+delta);
+  return dt.toISOString().slice(0,10);
+}
+
+function formatEs(n, decimals=3){
+  return n.toFixed(decimals).replace('.', ',');
+}
+
+function lerpColor(c1, c2, t){
+  const a = c1.match(/\w\w/g).map(x=>parseInt(x,16));
+  const b = c2.match(/\w\w/g).map(x=>parseInt(x,16));
+  const r = a.map((v,i)=>Math.round(v + (b[i]-v)*t));
+  return `rgb(${r[0]},${r[1]},${r[2]})`;
+}
+function priceColor(t){
+  // t in [0,1] -> cheap mint to expensive coral, via amber
+  if(t < 0.5) return lerpColor('3fe6b0','f2c94c', t/0.5);
+  return lerpColor('f2c94c','ff6452', (t-0.5)/0.5);
+}
+
+async function fetchJSON(url){
+  try{
+    const r = await fetch(url, {headers:{'Accept':'application/json'}});
+    if(!r.ok) throw new Error('bad status');
+    return await r.json();
+  }catch(e){
+    const proxied = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+    const r2 = await fetch(proxied);
+    if(!r2.ok) throw new Error('network');
+    return await r2.json();
+  }
+}
+
+async function loadDay(dateStr){
+  const chartArea = $('chartArea');
+  chartArea.innerHTML = '<div class="msg">Cargando datos…</div>';
+  $('tableCard').innerHTML = '';
+
+  const url = `https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?start_date=${dateStr}T00:00&end_date=${dateStr}T23:59&time_trunc=hour`;
+
+  let json;
+  try{
+    json = await fetchJSON(url);
+  }catch(e){
+    chartArea.innerHTML = '<div class="msg">No se han podido cargar los datos. Comprueba tu conexión e inténtalo de nuevo.</div>';
+    return;
+  }
+
+  const included = (json && json.included) || [];
+  if(!included.length){
+    chartArea.innerHTML = '<div class="msg">Sin datos disponibles para este día.<br>Si es el día de mañana, suelen publicarse sobre las 20:15h.</div>';
+    return;
+  }
+
+  let series = included.find(s => /pvpc/i.test(s.type)) || included[0];
+  const isPvpc = /pvpc/i.test(series.type);
+  $('chartTitle').textContent = isPvpc ? 'PVPC — precio por hora' : 'Precio del mercado por hora (base del PVPC)';
+
+  const values = series.attributes.values
+    .map(v => ({ hour: parseInt(v.datetime.slice(11,13),10), price: v.value/1000 }))
+    .sort((a,b)=>a.hour-b.hour);
+
+  if(!values.length){
+    chartArea.innerHTML = '<div class="msg">Sin datos disponibles para este día.</div>';
+    return;
+  }
+
+  renderDay(dateStr, values);
+}
+
+function renderDay(dateStr, values){
+  const nowParts = madridNowParts();
+  const isToday = dateStr === nowParts.date;
+  const currentHour = isToday ? nowParts.hour : null;
+
+  const prices = values.map(v=>v.price);
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const avg = prices.reduce((a,b)=>a+b,0)/prices.length;
+
+  $('statMin').textContent = formatEs(min) + ' €';
+  $('statAvg').textContent = formatEs(avg) + ' €';
+  $('statMax').textContent = formatEs(max) + ' €';
+
+  // Meter
+  const dateObj = new Date(dateStr + 'T12:00:00');
+  const dateFmt = new Intl.DateTimeFormat('es-ES', {weekday:'long', day:'numeric', month:'long'});
+  $('clockDate').textContent = dateFmt.format(dateObj);
+
+  if(isToday){
+    const nowEntry = values.find(v=>v.hour === currentHour) || values[values.length-1];
+    $('meterLabel').textContent = 'Precio ahora';
+    $('meterPrice').textContent = formatEs(nowEntry.price);
+    $('clockTime').textContent = `${String(currentHour).padStart(2,'0')}:${nowParts.minute}`;
+    const t = (nowEntry.price - min) / Math.max(1e-9,(max-min));
+    const pill = $('statusPill');
+    pill.style.color = priceColor(t);
+    pill.style.borderColor = priceColor(t);
+    pill.textContent = t < 0.33 ? '● hora barata' : t < 0.66 ? '● hora media' : '● hora cara';
+  } else {
+    $('meterLabel').textContent = 'Media del día';
+    $('meterPrice').textContent = formatEs(avg);
+    $('clockTime').textContent = '—';
+    $('statusPill').textContent = dateStr > nowParts.date ? 'día siguiente' : 'histórico';
+    $('statusPill').style.color = 'var(--text-muted)';
+    $('statusPill').style.borderColor = 'var(--line)';
+  }
+
+  // Chart
+  const chartArea = $('chartArea');
+  chartArea.innerHTML = '';
+  const chart = document.createElement('div');
+  chart.className = 'chart';
+  values.forEach(v=>{
+    const col = document.createElement('div');
+    col.className = 'bar-col' + (v.hour===currentHour ? ' is-now' : '');
+    const t = (v.price - min) / Math.max(1e-9,(max-min));
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.style.height = Math.max(4, t*100) + '%';
+    bar.style.background = priceColor(t);
+    bar.title = `${String(v.hour).padStart(2,'0')}:00 — ${formatEs(v.price)} €/kWh`;
+    if(v.hour === currentHour){
+      const flag = document.createElement('div');
+      flag.className = 'now-flag';
+      flag.textContent = '▾';
+      col.appendChild(flag);
+    }
+    col.appendChild(bar);
+    chart.appendChild(col);
+  });
+  chartArea.appendChild(chart);
+
+  const axis = document.createElement('div');
+  axis.className = 'chart-axis';
+  values.forEach(v=>{
+    const lab = document.createElement('div');
+    lab.className = 'axis-label';
+    lab.textContent = String(v.hour).padStart(2,'0');
+    axis.appendChild(lab);
+  });
+  chartArea.appendChild(axis);
+
+  // Table
+  const tableCard = $('tableCard');
+  const rows = values.map(v=>{
+    const t = (v.price - min) / Math.max(1e-9,(max-min));
+    return `<tr class="${v.hour===currentHour?'is-now':''}">
+      <td>${String(v.hour).padStart(2,'0')}:00</td>
+      <td>${formatEs(v.price)} €/kWh</td>
+      <td class="mini-bar-cell"><div class="mini-bar-track"><div class="mini-bar-fill" style="width:${Math.max(4,t*100)}%;background:${priceColor(t)}"></div></div></td>
+    </tr>`;
+  }).join('');
+  tableCard.innerHTML = `<table>
+    <thead><tr><th>Hora</th><th>Precio</th><th>Relativo al día</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function setActiveQuick(dateStr){
+  const nowParts = madridNowParts();
+  $('btnYesterday').classList.toggle('active', dateStr === addDays(nowParts.date,-1));
+  $('btnToday').classList.toggle('active', dateStr === nowParts.date);
+  $('btnTomorrow').classList.toggle('active', dateStr === addDays(nowParts.date,1));
+}
+
+function applyAvailabilityLimits(){
+  const nowParts = madridNowParts();
+  const maxDate = getMaxSelectableDate(nowParts);
+  const tomorrowAvailable = tomorrowIsPublished(nowParts);
+
+  $('datePicker').max = maxDate;
+  $('btnTomorrow').disabled = !tomorrowAvailable;
+  $('nextDay').disabled = $('datePicker').value >= maxDate;
+
+  const note = $('tomorrowNote');
+  if(!tomorrowAvailable){
+    note.style.display = 'block';
+    note.textContent = 'Las tarifas de mañana se publican sobre las 20:30h de hoy. Hasta entonces solo puedes consultar hoy y días anteriores.';
+  } else {
+    note.style.display = 'none';
+  }
+}
+
+function goTo(dateStr){
+  const nowParts = madridNowParts();
+  const maxDate = getMaxSelectableDate(nowParts);
+  if(dateStr > maxDate) dateStr = maxDate;
+
+  $('datePicker').value = dateStr;
+  setActiveQuick(dateStr);
+  applyAvailabilityLimits();
+  loadDay(dateStr);
+}
+
+function init(){
+  const nowParts = madridNowParts();
+  $('datePicker').value = nowParts.date;
+  applyAvailabilityLimits();
+
+  $('prevDay').addEventListener('click', ()=> goTo(addDays($('datePicker').value,-1)));
+  $('nextDay').addEventListener('click', ()=> goTo(addDays($('datePicker').value,1)));
+  $('datePicker').addEventListener('change', (e)=> goTo(e.target.value));
+  $('btnYesterday').addEventListener('click', ()=> goTo(addDays(madridNowParts().date,-1)));
+  $('btnToday').addEventListener('click', ()=> goTo(madridNowParts().date));
+  $('btnTomorrow').addEventListener('click', ()=> goTo(addDays(madridNowParts().date,1)));
+
+  goTo(nowParts.date);
+
+  // Cada minuto: si estamos en "hoy", refresca la hora actual marcada;
+  // además reevalúa si mañana acaba de publicarse (p.ej. al pasar las 20:30h).
+  setInterval(()=>{
+    applyAvailabilityLimits();
+    if($('datePicker').value === madridNowParts().date){
+      loadDay($('datePicker').value);
+    }
+  }, 60000);
+}
+
+init();
+</script>
+</body>
+</html>
