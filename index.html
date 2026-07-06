@@ -577,8 +577,24 @@ async function loadDay(dateStr){
   const isPvpc = /pvpc/i.test(series.type);
   $('chartTitle').textContent = isPvpc ? 'PVPC — precio por hora' : 'Precio del mercado por hora (base del PVPC)';
 
-  const values = series.attributes.values
-    .map(v => ({ hour: parseInt(v.datetime.slice(11,13),10), price: v.value/1000 }))
+  const rawPoints = series.attributes.values.map(v => ({
+    hour: parseInt(v.datetime.slice(11,13),10),
+    price: v.value/1000,
+  }));
+
+  // Si la API devuelve varios puntos por hora (cuartos de hora), los
+  // agrupamos y promediamos para mostrar un único precio por hora.
+  const byHour = {};
+  rawPoints.forEach(p => {
+    if(!byHour[p.hour]) byHour[p.hour] = [];
+    byHour[p.hour].push(p.price);
+  });
+
+  const values = Object.keys(byHour)
+    .map(h => ({
+      hour: parseInt(h, 10),
+      price: byHour[h].reduce((a,b)=>a+b,0) / byHour[h].length,
+    }))
     .sort((a,b)=>a.hour-b.hour);
 
   if(!values.length){
