@@ -173,6 +173,7 @@
   }
   .stat .k{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;}
   .stat .v{font-family:'IBM Plex Mono',monospace;font-size:20px;margin-top:4px;}
+  .stat .sub-hour{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);margin-top:3px;}
   .stat.cheap .v{color:var(--cheap);}
   .stat.expensive .v{color:var(--expensive);}
 
@@ -235,6 +236,100 @@
     font-size:10px;
     color:var(--text-muted);
   }
+  .legend{
+    display:flex;
+    gap:18px;
+    margin-top:16px;
+    padding-top:14px;
+    border-top:1px solid var(--line);
+  }
+  .legend-item{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--text-muted);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .legend-dot{width:9px;height:9px;border-radius:50%;}
+
+  /* ---- Insight row ---- */
+  .insight-row{
+    display:grid;
+    grid-template-columns:1.6fr 1fr;
+    gap:14px;
+    margin:18px 0;
+  }
+  .tip-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:18px;
+    display:flex;
+    gap:14px;
+    align-items:flex-start;
+  }
+  .tip-icon{font-size:22px;line-height:1;flex-shrink:0;}
+  .tip-title{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    margin-bottom:6px;
+  }
+  .tip-text{
+    font-family:'Inter',sans-serif;
+    font-size:13.5px;
+    color:var(--text-muted);
+    line-height:1.5;
+  }
+  .best-window-card{
+    background:linear-gradient(160deg, rgba(63,230,176,0.10), var(--surface));
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:18px;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .best-window-card .k{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--text-muted);
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+  .best-window-card .v{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:24px;
+    color:var(--cheap);
+    margin-top:6px;
+  }
+  .best-window-card .sub{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    color:var(--text-muted);
+    margin-top:2px;
+  }
+  .duration-toggle{
+    display:flex;
+    gap:6px;
+    margin-top:14px;
+  }
+  .duration-toggle button{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--text-muted);
+    padding:5px 10px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .duration-toggle button.active{
+    border-color:var(--cheap);
+    color:var(--cheap);
+  }
 
   /* ---- Table ---- */
   .table-card{
@@ -282,6 +377,7 @@
     .meter{flex-direction:column;align-items:flex-start;}
     .meter-right{text-align:left;}
     .axis-label:nth-child(odd){visibility:hidden;}
+    .insight-row{grid-template-columns:1fr;}
   }
 </style>
 </head>
@@ -315,15 +411,40 @@
   <div class="tomorrow-note" id="tomorrowNote" style="display:none;"></div>
 
   <div class="stats">
-    <div class="stat cheap"><div class="k">Mínimo</div><div class="v" id="statMin">—</div></div>
+    <div class="stat cheap"><div class="k">Mínimo</div><div class="v" id="statMin">—</div><div class="sub-hour" id="statMinHour"></div></div>
     <div class="stat"><div class="k">Media</div><div class="v" id="statAvg">—</div></div>
-    <div class="stat expensive"><div class="k">Máximo</div><div class="v" id="statMax">—</div></div>
+    <div class="stat expensive"><div class="k">Máximo</div><div class="v" id="statMax">—</div><div class="sub-hour" id="statMaxHour"></div></div>
   </div>
 
   <div class="chart-card">
     <div class="chart-title" id="chartTitle">Precio por hora</div>
     <div id="chartArea">
       <div class="msg">Cargando datos…</div>
+    </div>
+    <div class="legend">
+      <span class="legend-item"><span class="legend-dot" style="background:var(--cheap)"></span>Barato</span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--mid)"></span>Medio</span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--expensive)"></span>Caro</span>
+    </div>
+  </div>
+
+  <div class="insight-row" id="insightRow" style="display:none;">
+    <div class="tip-card">
+      <div class="tip-icon">💡</div>
+      <div>
+        <div class="tip-title">¿Sabías qué?</div>
+        <div class="tip-text" id="tipText">—</div>
+      </div>
+    </div>
+    <div class="best-window-card">
+      <div class="k">Mejor tramo</div>
+      <div class="v" id="bestWindowRange">—</div>
+      <div class="sub" id="bestWindowPrice">—</div>
+      <div class="duration-toggle" id="durationToggle">
+        <button data-h="2">2h</button>
+        <button data-h="3">3h</button>
+        <button data-h="4">4h</button>
+      </div>
     </div>
   </div>
 
@@ -433,6 +554,8 @@ async function loadDay(dateStr){
 }
 
 function renderDay(dateStr, values){
+  currentValues = values;
+  currentDateStr = dateStr;
   const nowParts = madridNowParts();
   const isToday = dateStr === nowParts.date;
   const currentHour = isToday ? nowParts.hour : null;
@@ -442,9 +565,14 @@ function renderDay(dateStr, values){
   const max = Math.max(...prices);
   const avg = prices.reduce((a,b)=>a+b,0)/prices.length;
 
+  const minEntry = values.find(v=>v.price === min);
+  const maxEntry = values.find(v=>v.price === max);
+
   $('statMin').textContent = formatEs(min) + ' €';
   $('statAvg').textContent = formatEs(avg) + ' €';
   $('statMax').textContent = formatEs(max) + ' €';
+  $('statMinHour').textContent = `${String(minEntry.hour).padStart(2,'0')}:00–${String((minEntry.hour+1)%24).padStart(2,'0')}:00`;
+  $('statMaxHour').textContent = `${String(maxEntry.hour).padStart(2,'0')}:00–${String((maxEntry.hour+1)%24).padStart(2,'0')}:00`;
 
   // Meter
   const dateObj = new Date(dateStr + 'T12:00:00');
@@ -519,6 +647,65 @@ function renderDay(dateStr, values){
     <thead><tr><th>Hora</th><th>Precio</th><th>Relativo al día</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
+
+  renderInsight(values, dateStr);
+}
+
+let currentValues = [];
+let currentDateStr = null;
+let chargeDuration = 3;
+
+function bestConsecutiveWindow(values, duration, hourFrom=0, hourTo=24){
+  const byHour = Object.fromEntries(values.map(v=>[v.hour, v.price]));
+  let bestStart = null, bestAvg = null;
+  for(let start = hourFrom; start <= hourTo - duration; start++){
+    let sum = 0, ok = true;
+    for(let h = start; h < start+duration; h++){
+      if(byHour[h] === undefined){ ok = false; break; }
+      sum += byHour[h];
+    }
+    if(!ok) continue;
+    const avg = sum/duration;
+    if(bestAvg === null || avg < bestAvg){ bestAvg = avg; bestStart = start; }
+  }
+  return { start: bestStart, avg: bestAvg };
+}
+
+function renderInsight(values, dateStr){
+  const insightRow = $('insightRow');
+  if(!values.length){ insightRow.style.display = 'none'; return; }
+  insightRow.style.display = 'grid';
+
+  // Franja recomendada evitando la madrugada profunda (0h-7h), pensada para
+  // tareas domésticas en horario habitual.
+  const practical = bestConsecutiveWindow(values, chargeDuration, 8, 24);
+  const absolute = bestConsecutiveWindow(values, chargeDuration, 0, 24);
+
+  const prices = values.map(v=>v.price);
+  const dayAvg = prices.reduce((a,b)=>a+b,0)/prices.length;
+
+  if(practical.start !== null){
+    const end = practical.start + chargeDuration;
+    $('bestWindowRange').textContent = `${String(practical.start).padStart(2,'0')}:00–${String(end).padStart(2,'0')}:00`;
+    $('bestWindowPrice').textContent = `${formatEs(practical.avg)} €/kWh de media`;
+  } else {
+    $('bestWindowRange').textContent = '—';
+    $('bestWindowPrice').textContent = 'Sin datos suficientes';
+  }
+
+  let tip;
+  if(practical.start === null){
+    tip = 'Aún no hay suficientes horas de datos para calcular una franja recomendada.';
+  } else if(absolute.start !== null && absolute.start < 8 && absolute.avg < practical.avg - 0.005){
+    tip = `La franja más barata del día en realidad cae de madrugada (${String(absolute.start).padStart(2,'0')}:00–${String(absolute.start+chargeDuration).padStart(2,'0')}:00, ${formatEs(absolute.avg)} €/kWh). Si no quieres cambiar de horario, el tramo de ${String(practical.start).padStart(2,'0')}:00 a ${String(practical.start+chargeDuration).padStart(2,'0')}:00 es la mejor alternativa en horario habitual, con un precio medio de ${formatEs(practical.avg)} €/kWh.`;
+  } else {
+    tip = `El tramo de ${String(practical.start).padStart(2,'0')}:00 a ${String(practical.start+chargeDuration).padStart(2,'0')}:00 es de las franjas más económicas del día (${formatEs(practical.avg)} €/kWh de media, frente a ${formatEs(dayAvg)} €/kWh de media diaria). Buen momento para lavadora, lavavajillas o cargar el coche.`;
+  }
+  $('tipText').textContent = tip;
+
+  document.querySelectorAll('#durationToggle button').forEach(btn=>{
+    btn.classList.toggle('active', parseInt(btn.dataset.h,10) === chargeDuration);
+  });
 }
 
 function setActiveQuick(dateStr){
@@ -568,6 +755,13 @@ function init(){
   $('btnYesterday').addEventListener('click', ()=> goTo(addDays(madridNowParts().date,-1)));
   $('btnToday').addEventListener('click', ()=> goTo(madridNowParts().date));
   $('btnTomorrow').addEventListener('click', ()=> goTo(addDays(madridNowParts().date,1)));
+
+  $('durationToggle').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button');
+    if(!btn) return;
+    chargeDuration = parseInt(btn.dataset.h,10);
+    if(currentValues.length) renderInsight(currentValues, currentDateStr);
+  });
 
   goTo(nowParts.date);
 
