@@ -552,10 +552,86 @@ async function fetchJSON(url){
   }
 }
 
+const PVPC_REAL_URL = 'https://api.preciodelaluz.org/v1/prices/all?zone=PCB';
+
+function groupAndAveragePoints(rawPoints){
+  const byHour = {};
+  rawPoints.forEach(p => {
+    if(!byHour[p.hour]) byHour[p.hour] = [];
+    byHour[p.hour].push(p.price);
+  });
+  return Object.keys(byHour)
+    .map(h => ({
+      hour: parseInt(h, 10),
+      price: byHour[h].reduce((a,b)=>a+b,0) / byHour[h].length,
+    }))
+    .sort((a,b)=>a.hour-b.hour);
+}
+
+// Busca dentro de la respuesta de preciodelaluz.org un objeto cuyas claves
+// sean fechas/horas ISO y cuyos valores sean precios numéricos, y se queda
+// solo con los que pertenecen a dateStr.
+function extractRealPvpcForDate(json, dateStr){
+  const points = [];
+
+  function walk(node){
+    if(!node || typeof node !== 'object') return;
+    const keys = Object.keys(node);
+    const looksLikeSeries = keys.length > 0 && keys.every(k =>
+      typeof node[k] === 'number' && /^\d{4}-\d{2}-\d{2}/.test(k)
+    );
+    if(looksLikeSeries){
+      keys.forEach(k => {
+        if(k.slice(0,10) === dateStr){
+          const hour = parseInt(k.slice(11,13), 10);
+          points.push({ hour, price: node[k] });
+        }
+      });
+      return;
+    }
+    Object.values(node).forEach(v => { if(v && typeof v === 'object') walk(v); });
+  }
+
+  walk(json);
+  if(!points.length) return null;
+
+  // Los valores de esta API ya vienen en €/kWh; si detectamos magnitudes
+  // propias de €/MWh (>5), los convertimos por seguridad.
+  const avgMagnitude = points.reduce((a,p)=>a+p.price,0) / points.length;
+  const normalized = points.map(p => ({ hour: p.hour, price: avgMagnitude > 5 ? p.price/1000 : p.price }));
+
+  const values = groupAndAveragePoints(normalized);
+  return values.length ? values : null;
+}
+
+async function fetchRealPvpc(dateStr){
+  try{
+    const json = await fetchJSON(PVPC_REAL_URL);
+    return extractRealPvpcForDate(json, dateStr);
+  }catch(e){
+    console.warn('No se pudo obtener el PVPC oficial (preciodelaluz.org):', e);
+    return null;
+  }
+}
+
 async function loadDay(dateStr){
   const chartArea = $('chartArea');
   chartArea.innerHTML = '<div class="msg">Cargando datos…</div>';
   $('tableCard').innerHTML = '';
+
+  const nowParts = madridNowParts();
+  const isTodayOrTomorrow = dateStr === nowParts.date || dateStr === addDays(nowParts.date, 1);
+
+  if(isTodayOrTomorrow){
+    const realValues = await fetchRealPvpc(dateStr);
+    if(realValues && realValues.length >= 20){
+      $('chartTitle').textContent = 'PVPC oficial (ESIOS) — precio por hora';
+      renderDay(dateStr, realValues);
+      return;
+    }
+    // Si no hay dato oficial todavía (p.ej. mañana antes de las 20:15h),
+    // seguimos con el respaldo de abajo.
+  }
 
   const url = `https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?start_date=${dateStr}T00:00&end_date=${dateStr}T23:59&time_trunc=hour`;
 
@@ -575,27 +651,14 @@ async function loadDay(dateStr){
 
   let series = included.find(s => /pvpc/i.test(s.type)) || included[0];
   const isPvpc = /pvpc/i.test(series.type);
-  $('chartTitle').textContent = isPvpc ? 'PVPC — precio por hora' : 'Precio del mercado por hora (base del PVPC)';
+  $('chartTitle').textContent = isPvpc ? 'PVPC — precio por hora' : 'Precio de mercado por hora (aprox., base del PVPC)';
 
   const rawPoints = series.attributes.values.map(v => ({
     hour: parseInt(v.datetime.slice(11,13),10),
     price: v.value/1000,
   }));
 
-  // Si la API devuelve varios puntos por hora (cuartos de hora), los
-  // agrupamos y promediamos para mostrar un único precio por hora.
-  const byHour = {};
-  rawPoints.forEach(p => {
-    if(!byHour[p.hour]) byHour[p.hour] = [];
-    byHour[p.hour].push(p.price);
-  });
-
-  const values = Object.keys(byHour)
-    .map(h => ({
-      hour: parseInt(h, 10),
-      price: byHour[h].reduce((a,b)=>a+b,0) / byHour[h].length,
-    }))
-    .sort((a,b)=>a.hour-b.hour);
+  const values = groupAndAveragePoints(rawPoints);
 
   if(!values.length){
     chartArea.innerHTML = '<div class="msg">Sin datos disponibles para este día.</div>';
