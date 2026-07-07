@@ -889,12 +889,14 @@ function init(){
 
   goTo(nowParts.date);
 
-  // Cada minuto: si estamos en "hoy", refresca la hora actual marcada;
-  // además reevalúa si mañana acaba de publicarse (p.ej. al pasar las 20:30h).
+  // Cada minuto: solo redibujamos con los datos ya cargados (para mover el
+  // marcador de la hora actual). La API solo se consulta al abrir la página
+  // o al cambiar de día manualmente — nunca en segundo plano.
   setInterval(()=>{
     applyAvailabilityLimits();
-    if($('datePicker').value === madridNowParts().date){
-      loadDay($('datePicker').value);
+    const isViewingToday = $('datePicker').value === madridNowParts().date;
+    if(isViewingToday && currentValues.length){
+      renderDay($('datePicker').value, currentValues);
     }
   }, 60000);
 }
