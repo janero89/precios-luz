@@ -443,9 +443,9 @@
   <div class="tomorrow-note" id="tomorrowNote" style="display:none;"></div>
 
   <div class="stats">
-    <div class="stat cheap"><div class="k">Mínimo</div><div class="v" id="statMin">—</div><div class="sub-hour" id="statMinHour"></div></div>
+    <div class="stat cheap"><div class="k">Hora más barata</div><div class="v" id="statMin">—</div><div class="sub-hour" id="statMinHour"></div></div>
     <div class="stat"><div class="k">Media</div><div class="v" id="statAvg">—</div></div>
-    <div class="stat expensive"><div class="k">Máximo</div><div class="v" id="statMax">—</div><div class="sub-hour" id="statMaxHour"></div></div>
+    <div class="stat expensive"><div class="k">Hora más cara</div><div class="v" id="statMax">—</div><div class="sub-hour" id="statMaxHour"></div></div>
   </div>
 
   <div class="chart-card">
@@ -683,11 +683,11 @@ function renderDay(dateStr, values){
   const minEntry = values.find(v=>v.price === min);
   const maxEntry = values.find(v=>v.price === max);
 
-  $('statMin').textContent = formatEs(min) + ' €';
-  $('statAvg').textContent = formatEs(avg) + ' €';
-  $('statMax').textContent = formatEs(max) + ' €';
-  $('statMinHour').textContent = `${String(minEntry.hour).padStart(2,'0')}:00–${String((minEntry.hour+1)%24).padStart(2,'0')}:00`;
-  $('statMaxHour').textContent = `${String(maxEntry.hour).padStart(2,'0')}:00–${String((maxEntry.hour+1)%24).padStart(2,'0')}:00`;
+  $('statMin').textContent = `${String(minEntry.hour).padStart(2,'0')}-${String((minEntry.hour+1)%24).padStart(2,'0')}h`;
+  $('statAvg').textContent = formatEs(avg) + ' €/kWh';
+  $('statMax').textContent = `${String(maxEntry.hour).padStart(2,'0')}-${String((maxEntry.hour+1)%24).padStart(2,'0')}h`;
+  $('statMinHour').textContent = `${formatEs(min)} €/kWh`;
+  $('statMaxHour').textContent = `${formatEs(max)} €/kWh`;
 
   // Meter
   const dateObj = new Date(dateStr + 'T12:00:00');
