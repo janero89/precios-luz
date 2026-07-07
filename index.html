@@ -721,11 +721,12 @@ function renderDay(dateStr, values){
   values.forEach(v=>{
     const col = document.createElement('div');
     col.className = 'bar-col' + (v.hour===currentHour ? ' is-now' : '');
-    const t = (v.price - min) / Math.max(1e-9,(max-min));
+    const tColor = (v.price - min) / Math.max(1e-9,(max-min));
+    const tSize = v.price / max;
     const bar = document.createElement('div');
     bar.className = 'bar';
-    bar.style.height = Math.max(4, t*100) + '%';
-    bar.style.background = priceColor(t);
+    bar.style.height = Math.max(4, tSize*100) + '%';
+    bar.style.background = priceColor(tColor);
     bar.title = `${String(v.hour).padStart(2,'0')}:00 — ${formatEs(v.price)} €/kWh`;
     const showReadout = () => {
       const readout = $('chartReadout');
@@ -758,11 +759,12 @@ function renderDay(dateStr, values){
   // Table
   const tableCard = $('tableCard');
   const rows = values.map(v=>{
-    const t = (v.price - min) / Math.max(1e-9,(max-min));
+    const tColor = (v.price - min) / Math.max(1e-9,(max-min));
+    const tSize = v.price / max;
     return `<tr class="${v.hour===currentHour?'is-now':''}">
       <td>${String(v.hour).padStart(2,'0')}:00</td>
       <td>${formatEs(v.price)} €/kWh</td>
-      <td class="mini-bar-cell"><div class="mini-bar-track"><div class="mini-bar-fill" style="width:${Math.max(4,t*100)}%;background:${priceColor(t)}"></div></div></td>
+      <td class="mini-bar-cell"><div class="mini-bar-track"><div class="mini-bar-fill" style="width:${Math.max(4,tSize*100)}%;background:${priceColor(tColor)}"></div></div></td>
     </tr>`;
   }).join('');
   tableCard.innerHTML = `<table>
