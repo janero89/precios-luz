@@ -438,9 +438,7 @@
     <div class="spacer"></div>
     <button class="quick" id="btnYesterday">Ayer</button>
     <button class="quick" id="btnToday">Hoy</button>
-    <button class="quick" id="btnTomorrow">Mañana</button>
   </div>
-  <div class="tomorrow-note" id="tomorrowNote" style="display:none;"></div>
 
   <div class="stats">
     <div class="stat cheap"><div class="k">Hora más barata</div><div class="v" id="statMin">—</div><div class="sub-hour" id="statMinHour"></div></div>
@@ -487,7 +485,7 @@
   <div class="table-card" id="tableCard" style="margin-top:18px;"></div>
 
   <div class="footnote">
-    Datos del precio horario del mercado eléctrico (base del PVPC), publicados por Red Eléctrica de España a través de su API pública (<a href="https://www.ree.es/es/datos/apidatos" target="_blank" rel="noopener">REData</a>). Se muestran en €/kWh, hora de referencia Península. El precio final de la factura PVPC añade peajes e impuestos, por lo que puede diferir ligeramente. Los precios de mañana suelen publicarse a partir de las 20:15h.
+    Datos del precio horario del mercado eléctrico (base del PVPC), publicados por Red Eléctrica de España a través de su API pública (<a href="https://www.ree.es/es/datos/apidatos" target="_blank" rel="noopener">REData</a>). Se muestran en €/kWh, hora de referencia Península. El precio final de la factura PVPC añade peajes e impuestos, por lo que puede diferir ligeramente.
   </div>
 </div>
 
@@ -504,16 +502,8 @@ function madridNowParts(){
   return { date: `${parts.year}-${parts.month}-${parts.day}`, hour: parseInt(parts.hour,10), minute: parts.minute };
 }
 
-const PUBLISH_HOUR = 20;
-const PUBLISH_MINUTE = 30;
-
-function tomorrowIsPublished(nowParts){
-  return nowParts.hour > PUBLISH_HOUR ||
-    (nowParts.hour === PUBLISH_HOUR && parseInt(nowParts.minute,10) >= PUBLISH_MINUTE);
-}
-
 function getMaxSelectableDate(nowParts){
-  return tomorrowIsPublished(nowParts) ? addDays(nowParts.date, 1) : nowParts.date;
+  return nowParts.date;
 }
 
 function addDays(dateStr, delta){
@@ -620,16 +610,16 @@ async function loadDay(dateStr){
   $('tableCard').innerHTML = '';
 
   const nowParts = madridNowParts();
-  const isTodayOrTomorrow = dateStr === nowParts.date || dateStr === addDays(nowParts.date, 1);
+  const isToday = dateStr === nowParts.date;
 
-  if(isTodayOrTomorrow){
+  if(isToday){
     const realValues = await fetchRealPvpc(dateStr);
     if(realValues && realValues.length >= 20){
       $('chartTitle').textContent = 'PVPC oficial (ESIOS) — precio por hora';
       renderDay(dateStr, realValues);
       return;
     }
-    // Si no hay dato oficial todavía (p.ej. mañana antes de las 20:15h),
+    // Si el mirror gratuito aún no ha actualizado el dato oficial de hoy,
     // seguimos con el respaldo de abajo.
   }
 
@@ -645,7 +635,7 @@ async function loadDay(dateStr){
 
   const included = (json && json.included) || [];
   if(!included.length){
-    chartArea.innerHTML = '<div class="msg">Sin datos disponibles para este día.<br>Si es el día de mañana, suelen publicarse sobre las 20:15h.</div>';
+    chartArea.innerHTML = '<div class="msg">Sin datos disponibles para este día.</div>';
     return;
   }
 
@@ -836,25 +826,14 @@ function setActiveQuick(dateStr){
   const nowParts = madridNowParts();
   $('btnYesterday').classList.toggle('active', dateStr === addDays(nowParts.date,-1));
   $('btnToday').classList.toggle('active', dateStr === nowParts.date);
-  $('btnTomorrow').classList.toggle('active', dateStr === addDays(nowParts.date,1));
 }
 
 function applyAvailabilityLimits(){
   const nowParts = madridNowParts();
   const maxDate = getMaxSelectableDate(nowParts);
-  const tomorrowAvailable = tomorrowIsPublished(nowParts);
 
   $('datePicker').max = maxDate;
-  $('btnTomorrow').disabled = !tomorrowAvailable;
   $('nextDay').disabled = $('datePicker').value >= maxDate;
-
-  const note = $('tomorrowNote');
-  if(!tomorrowAvailable){
-    note.style.display = 'block';
-    note.textContent = 'Las tarifas de mañana se publican sobre las 20:30h de hoy. Hasta entonces solo puedes consultar hoy y días anteriores.';
-  } else {
-    note.style.display = 'none';
-  }
 }
 
 function goTo(dateStr){
@@ -878,7 +857,6 @@ function init(){
   $('datePicker').addEventListener('change', (e)=> goTo(e.target.value));
   $('btnYesterday').addEventListener('click', ()=> goTo(addDays(madridNowParts().date,-1)));
   $('btnToday').addEventListener('click', ()=> goTo(madridNowParts().date));
-  $('btnTomorrow').addEventListener('click', ()=> goTo(addDays(madridNowParts().date,1)));
 
   $('durationToggle').addEventListener('click', (e)=>{
     const btn = e.target.closest('button');
